@@ -150,6 +150,9 @@ export default function Home() {
   const [safeOpen, setSafeOpen] = useState(true);
   const [aggressiveOpen, setAggressiveOpen] = useState(false);
   const [colorsOpen, setColorsOpen] = useState(false);
+  const [bgOpen, setBgOpen] = useState(false);
+  const [previewBg, setPreviewBg] = useState('');
+  const [bgHexInput, setBgHexInput] = useState('');
   const [colorOverrides, setColorOverrides] = useState<Record<string, string>>({});
   const [appliedColors, setAppliedColors] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -433,7 +436,7 @@ export default function Home() {
                     <span className="ba-label">Original</span>
                     <span className="ba-mono" style={{ fontSize: '11px', color: 'var(--bn-ink-4)' }}>{formatBytes(active.fileSize)}</span>
                   </div>
-                  <div className="ba-preview-well">
+                  <div className={`ba-preview-well${previewBg === 'checker' ? ' ba-preview-well--checker' : ''}`} style={previewBg && previewBg !== 'checker' ? { background: previewBg } : undefined}>
                     <LottiePreview key={`orig-${active.id}-${previewKey}`} animationData={active.originalAnimation} className="max-w-full max-h-full" />
                   </div>
                 </div>
@@ -443,7 +446,7 @@ export default function Home() {
                     <span className="ba-label" style={{ color: 'var(--bn-blue)' }}>Optimized</span>
                     <span className="ba-mono" style={{ fontSize: '11px', color: 'var(--bn-green)' }}>{formatBytes(activeOptSize)}</span>
                   </div>
-                  <div className="ba-preview-well">
+                  <div className={`ba-preview-well${previewBg === 'checker' ? ' ba-preview-well--checker' : ''}`} style={previewBg && previewBg !== 'checker' ? { background: previewBg } : undefined}>
                     <LottiePreview key={`opt-${active.id}-${previewKey}`} animationData={coloredOptimized ?? active.result.optimizedAnimation} className="max-w-full max-h-full" />
                   </div>
                 </div>
@@ -601,6 +604,81 @@ export default function Home() {
                   <p style={{ fontSize: '12px', color: 'var(--bn-ink-4)' }}>
                     {active ? 'No colors found' : 'No file selected'}
                   </p>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="ba-inspector-section">
+            <button className="ba-section-toggle" onClick={() => setBgOpen(v => !v)}>
+              <span className="ba-label">Background</span>
+              <svg className={`ba-chevron ${bgOpen ? 'ba-chevron--open' : ''}`} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 9l6 6 6-6" /></svg>
+            </button>
+            {bgOpen && (
+              <div style={{ marginTop: '10px' }}>
+                <div className="ba-bg-presets">
+                  {[
+                    { value: '', icon: true },
+                    { value: '#ffffff' },
+                    { value: '#000000' },
+                    { value: '#f5f5f5' },
+                    { value: '#1a1a1a' },
+                    { value: 'checker' },
+                  ].map(p => (
+                    <button
+                      key={p.value}
+                      className={`ba-bg-preset${previewBg === p.value ? ' ba-bg-preset--active' : ''}${p.value === 'checker' ? ' ba-bg-preset--checker' : ''}${p.icon ? ' ba-bg-preset--default' : ''}`}
+                      style={p.value && p.value !== 'checker' && !p.icon ? { background: p.value } : undefined}
+                      onClick={() => {
+                        setPreviewBg(p.value);
+                        setBgHexInput(p.value === 'checker' || !p.value ? '' : p.value.replace('#', ''));
+                      }}
+                      title={p.icon ? 'Default' : p.value}
+                    >
+                      {p.icon && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="9" /><path d="M5.5 5.5l13 13" /></svg>}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="ba-bg-custom">
+                  <div className="ba-bg-picker-wrap">
+                    <input
+                      type="color"
+                      value={previewBg && previewBg !== 'checker' ? previewBg : '#f7f5f0'}
+                      onChange={(e) => {
+                        const hex = e.target.value.toLowerCase();
+                        setPreviewBg(hex);
+                        setBgHexInput(hex.replace('#', ''));
+                      }}
+                      className="ba-bg-picker"
+                    />
+                  </div>
+                  <div className="ba-bg-hex-wrap">
+                    <span className="ba-bg-hash">#</span>
+                    <input
+                      type="text"
+                      value={bgHexInput}
+                      placeholder="hex"
+                      maxLength={6}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/[^0-9a-fA-F]/g, '').slice(0, 6);
+                        setBgHexInput(raw);
+                        if (raw.length === 6) setPreviewBg(`#${raw.toLowerCase()}`);
+                        if (raw.length === 0) setPreviewBg('');
+                      }}
+                      className="ba-bg-hex"
+                    />
+                  </div>
+                </div>
+
+                {previewBg && (
+                  <button
+                    className="ba-btn--ghost"
+                    style={{ marginTop: '6px', width: '100%', justifyContent: 'center', fontSize: '11px' }}
+                    onClick={() => { setPreviewBg(''); setBgHexInput(''); }}
+                  >
+                    Reset
+                  </button>
                 )}
               </div>
             )}

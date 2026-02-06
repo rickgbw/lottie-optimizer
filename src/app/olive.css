@@ -573,6 +573,127 @@
   height: 100%;
 }
 
+/* ── Background picker ── */
+.ba-bg-presets {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.ba-bg-preset {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--bn-border);
+  cursor: pointer;
+  transition: all 0.12s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: var(--bn-surface);
+  flex-shrink: 0;
+}
+
+.ba-bg-preset:hover {
+  border-color: var(--bn-ink-5);
+  box-shadow: var(--shadow-sm);
+}
+
+.ba-bg-preset--active {
+  border-color: var(--bn-blue);
+  box-shadow: 0 0 0 2px var(--bn-blue-ghost);
+}
+
+.ba-bg-preset--default {
+  background: var(--bn-surface);
+  color: var(--bn-ink-4);
+}
+
+.ba-bg-preset--default:hover {
+  color: var(--bn-ink-3);
+}
+
+.ba-bg-preset--checker {
+  background-image:
+    linear-gradient(45deg, #ccc 25%, transparent 25%),
+    linear-gradient(-45deg, #ccc 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #ccc 75%),
+    linear-gradient(-45deg, transparent 75%, #ccc 75%);
+  background-size: 8px 8px;
+  background-position: 0 0, 0 4px, 4px -4px, -4px 0px;
+  background-color: #fff;
+}
+
+.ba-bg-custom {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ba-bg-picker-wrap {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--bn-border);
+  flex-shrink: 0;
+}
+
+.ba-bg-picker {
+  width: 36px;
+  height: 36px;
+  border: none;
+  padding: 0;
+  margin: -4px;
+  cursor: pointer;
+}
+
+.ba-bg-hex-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  background: var(--bn-surface);
+  border: 1px solid var(--bn-border);
+  border-radius: var(--radius-sm);
+  padding: 0 8px;
+  height: 28px;
+}
+
+.ba-bg-hash {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--bn-ink-4);
+  user-select: none;
+}
+
+.ba-bg-hex {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--bn-ink);
+  background: none;
+  border: none;
+  outline: none;
+  padding: 0;
+  width: 100%;
+}
+
+.ba-bg-hex::placeholder {
+  color: var(--bn-ink-5);
+}
+
+.ba-preview-well--checker {
+  background-image:
+    linear-gradient(45deg, #d5d0c5 25%, transparent 25%),
+    linear-gradient(-45deg, #d5d0c5 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #d5d0c5 75%),
+    linear-gradient(-45deg, transparent 75%, #d5d0c5 75%) !important;
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
+  background-color: #fff !important;
+}
+
 /* ── Labels ── */
 .ba-label {
   font-size: 11px;
