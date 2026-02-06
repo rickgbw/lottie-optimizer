@@ -119,6 +119,7 @@ function applyColorOverrides(animation: LottieAnimation, overrides: Record<strin
 interface LottieItem {
   id: string;
   fileName: string;
+  fileSize: number;
   originalAnimation: LottieAnimation;
   result: OptimizationResult;
 }
@@ -165,6 +166,17 @@ export default function Home() {
     return applyColorOverrides(active.result.optimizedAnimation, appliedColors);
   }, [active, appliedColors]);
 
+  /* Pre-compute exact download data — same string for size display AND download */
+  const downloadData = useMemo(() => {
+    const map = new Map<string, { json: string; size: number }>();
+    for (const item of items) {
+      const anim = applyColorOverrides(item.result.optimizedAnimation, appliedColors);
+      const json = JSON.stringify(anim);
+      map.set(item.id, { json, size: new Blob([json]).size });
+    }
+    return map;
+  }, [items, appliedColors]);
+
   const processFiles = useCallback(async (files: File[]) => {
     setError('');
     setIsProcessing(true);
@@ -177,7 +189,7 @@ export default function Home() {
         try { json = JSON.parse(text); } catch { errors.push(`${file.name}: Invalid JSON`); continue; }
         if (!validateLottie(json)) { errors.push(`${file.name}: Not valid Lottie`); continue; }
         const result = optimizeLottie(json, options);
-        newItems.push({ id: crypto.randomUUID(), fileName: file.name, originalAnimation: json, result });
+        newItems.push({ id: crypto.randomUUID(), fileName: file.name, fileSize: file.size, originalAnimation: json, result });
       } catch { errors.push(`${file.name}: Failed`); }
     }
     if (newItems.length > 0) {
@@ -203,27 +215,31 @@ export default function Home() {
   }, [processFiles]);
 
   const handleDownload = useCallback((item: LottieItem) => {
-    const anim = applyColorOverrides(item.result.optimizedAnimation, appliedColors);
-    const blob = new Blob([JSON.stringify(anim)], { type: 'application/json' });
+    const data = downloadData.get(item.id);
+    if (!data) return;
+    const blob = new Blob([data.json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url; a.download = item.fileName.replace('.json', '-optimized.json');
-    document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
-  }, [appliedColors]);
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }, [downloadData]);
 
   const handleDownloadAll = useCallback(async () => {
     const zip = new JSZip();
     for (const item of items) {
-      const anim = applyColorOverrides(item.result.optimizedAnimation, appliedColors);
+      const data = downloadData.get(item.id);
+      if (!data) continue;
       const name = item.fileName.replace('.json', '-optimized.json');
-      zip.file(name, JSON.stringify(anim));
+      zip.file(name, data.json);
     }
     const blob = await zip.generateAsync({ type: 'blob' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url; a.download = 'lottie-optimized.zip';
-    document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
-  }, [items, appliedColors]);
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }, [items, downloadData]);
 
   const removeItem = useCallback((id: string) => {
     setItems(prev => {
@@ -253,12 +269,15 @@ export default function Home() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, []);
 
-  const totalOriginal = items.reduce((s, i) => s + i.result.originalSize, 0);
-  const totalOptimized = items.reduce((s, i) => s + i.result.optimizedSize, 0);
+  const totalOriginal = items.reduce((s, i) => s + i.fileSize, 0);
+  const totalOptimized = items.reduce((s, i) => s + (downloadData.get(i.id)?.size ?? 0), 0);
   const totalPct = totalOriginal > 0 ? ((totalOriginal - totalOptimized) / totalOriginal) * 100 : 0;
   const hasItems = items.length > 0;
   const hasColorOverrides = Object.keys(colorOverrides).length > 0;
   const hasPendingColors = JSON.stringify(colorOverrides) !== JSON.stringify(appliedColors);
+  const activeOptSize = active ? (downloadData.get(active.id)?.size ?? 0) : 0;
+  const activePct = active && active.fileSize > 0
+    ? ((active.fileSize - activeOptSize) / active.fileSize) * 100 : 0;
 
   return (
     <div className="ba-page">
@@ -301,7 +320,7 @@ export default function Home() {
                   >
                     <div className="ba-file-dot" />
                     <span className="ba-file-name">{item.fileName}</span>
-                    <span className="ba-file-badge">-{item.result.savingsPercentage.toFixed(0)}%</span>
+                    <span className="ba-file-badge">-{(((item.fileSize - (downloadData.get(item.id)?.size ?? 0)) / item.fileSize) * 100).toFixed(0)}%</span>
                     <button
                       className="ba-file-close"
                       onClick={(e) => { e.stopPropagation(); removeItem(item.id); }}
@@ -382,29 +401,29 @@ export default function Home() {
               <div className="ba-anim ba-d1" style={{ display: 'flex', gap: '24px', marginBottom: '20px' }}>
                 <div>
                   <div className="ba-label" style={{ marginBottom: '4px' }}>Original</div>
-                  <div className="ba-mono" style={{ fontSize: '16px', fontWeight: 600, color: 'var(--bn-ink)' }}>{formatBytes(active.result.originalSize)}</div>
+                  <div className="ba-mono" style={{ fontSize: '16px', fontWeight: 600, color: 'var(--bn-ink)' }}>{formatBytes(active.fileSize)}</div>
                 </div>
                 <div>
                   <div className="ba-label" style={{ marginBottom: '4px' }}>Optimized</div>
-                  <div className="ba-mono" style={{ fontSize: '16px', fontWeight: 600, color: 'var(--bn-green)' }}>{formatBytes(active.result.optimizedSize)}</div>
+                  <div className="ba-mono" style={{ fontSize: '16px', fontWeight: 600, color: 'var(--bn-green)' }}>{formatBytes(activeOptSize)}</div>
                 </div>
                 <div>
                   <div className="ba-label" style={{ marginBottom: '4px' }}>Reduction</div>
-                  <div className="ba-mono" style={{ fontSize: '16px', fontWeight: 600, color: 'var(--bn-blue)' }}>{active.result.savingsPercentage.toFixed(1)}%</div>
+                  <div className="ba-mono" style={{ fontSize: '16px', fontWeight: 600, color: 'var(--bn-blue)' }}>{activePct.toFixed(1)}%</div>
                 </div>
               </div>
 
               <div className="ba-anim ba-d2" style={{ marginBottom: '20px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
                   <span className="ba-mono" style={{ fontSize: '11px', color: 'var(--bn-ink-3)' }}>
-                    {formatBytes(active.result.originalSize)} &rarr; {formatBytes(active.result.optimizedSize)}
+                    {formatBytes(active.fileSize)} &rarr; {formatBytes(activeOptSize)}
                   </span>
                   <span className="ba-mono" style={{ fontSize: '11px', fontWeight: 600, color: 'var(--bn-blue)' }}>
-                    {active.result.savingsPercentage.toFixed(1)}% smaller
+                    {activePct.toFixed(1)}% smaller
                   </span>
                 </div>
                 <div className="ba-progress">
-                  <div className="ba-progress-fill" style={{ width: `${active.result.savingsPercentage}%` }} />
+                  <div className="ba-progress-fill" style={{ width: `${activePct}%` }} />
                 </div>
               </div>
 
@@ -412,7 +431,7 @@ export default function Home() {
                 <div className="ba-preview-card">
                   <div className="ba-preview-head">
                     <span className="ba-label">Original</span>
-                    <span className="ba-mono" style={{ fontSize: '11px', color: 'var(--bn-ink-4)' }}>{formatBytes(active.result.originalSize)}</span>
+                    <span className="ba-mono" style={{ fontSize: '11px', color: 'var(--bn-ink-4)' }}>{formatBytes(active.fileSize)}</span>
                   </div>
                   <div className="ba-preview-well">
                     <LottiePreview key={`orig-${active.id}-${previewKey}`} animationData={active.originalAnimation} className="max-w-full max-h-full" />
@@ -422,7 +441,7 @@ export default function Home() {
                 <div className="ba-preview-card ba-preview-card--opt">
                   <div className="ba-preview-head">
                     <span className="ba-label" style={{ color: 'var(--bn-blue)' }}>Optimized</span>
-                    <span className="ba-mono" style={{ fontSize: '11px', color: 'var(--bn-green)' }}>{formatBytes(active.result.optimizedSize)}</span>
+                    <span className="ba-mono" style={{ fontSize: '11px', color: 'var(--bn-green)' }}>{formatBytes(activeOptSize)}</span>
                   </div>
                   <div className="ba-preview-well">
                     <LottiePreview key={`opt-${active.id}-${previewKey}`} animationData={coloredOptimized ?? active.result.optimizedAnimation} className="max-w-full max-h-full" />
@@ -452,15 +471,15 @@ export default function Home() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ fontSize: '12px', color: 'var(--bn-ink-3)' }}>Original size</span>
-                    <span className="ba-mono" style={{ fontSize: '12px', fontWeight: 500, color: 'var(--bn-ink)' }}>{formatBytes(active.result.originalSize)}</span>
+                    <span className="ba-mono" style={{ fontSize: '12px', fontWeight: 500, color: 'var(--bn-ink)' }}>{formatBytes(active.fileSize)}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ fontSize: '12px', color: 'var(--bn-ink-3)' }}>Optimized</span>
-                    <span className="ba-mono" style={{ fontSize: '12px', fontWeight: 500, color: 'var(--bn-green)' }}>{formatBytes(active.result.optimizedSize)}</span>
+                    <span className="ba-mono" style={{ fontSize: '12px', fontWeight: 500, color: 'var(--bn-green)' }}>{formatBytes(activeOptSize)}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ fontSize: '12px', color: 'var(--bn-ink-3)' }}>Reduction</span>
-                    <span className="ba-mono" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--bn-blue)' }}>{active.result.savingsPercentage.toFixed(1)}%</span>
+                    <span className="ba-mono" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--bn-blue)' }}>{activePct.toFixed(1)}%</span>
                   </div>
                   {items.length > 1 && (
                     <div style={{ marginTop: '4px', paddingTop: '8px', borderTop: '1px solid var(--bn-border-dim)', display: 'flex', justifyContent: 'space-between' }}>
