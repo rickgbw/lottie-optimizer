@@ -74,11 +74,12 @@ export interface OptimizationOptions {
   simplifyKeyframes: boolean;
   removeDefaultValues: boolean;
   compressImages: boolean;
-  // Aggressive options (off by default)
+  // Alternative optimizations (off by default)
   removeExpressions: boolean;
   removeEffects: boolean;
   collapseTransforms: boolean;
   collapseDuplicateKeyframes: boolean;
+  renameLayers: boolean;
 }
 
 export const defaultOptions: OptimizationOptions = {
@@ -90,11 +91,12 @@ export const defaultOptions: OptimizationOptions = {
   simplifyKeyframes: true,
   removeDefaultValues: true,
   compressImages: true,
-  // Aggressive options (off by default)
+  // Alternative optimizations (off by default)
   removeExpressions: false,
   removeEffects: false,
   collapseTransforms: false,
   collapseDuplicateKeyframes: false,
+  renameLayers: false,
 };
 
 export interface OptimizationResult {
@@ -408,6 +410,44 @@ function collapseDuplicateKeyframes(obj: unknown): unknown {
   return obj;
 }
 
+/**
+ * Rename all layer and shape `nm` properties to short sequential names
+ * (e.g. "l0", "l1", …). Layer names are only cosmetic metadata used by
+ * design tools — renaming them has no effect on playback but can save
+ * a significant amount of space when the original names are long.
+ */
+function renameLayers(animation: LottieAnimation): LottieAnimation {
+  const result = deepClone(animation);
+  let counter = 0;
+
+  function renameInLayers(layers?: Layer[]): void {
+    if (!layers) return;
+    for (const layer of layers) {
+      if (layer.nm !== undefined) layer.nm = `l${counter++}`;
+      if (layer.shapes) renameInShapes(layer.shapes);
+    }
+  }
+
+  function renameInShapes(shapes: Shape[]): void {
+    for (const shape of shapes) {
+      if (shape.nm !== undefined) shape.nm = `s${counter++}`;
+      if (Array.isArray((shape as Record<string, unknown>).it)) {
+        renameInShapes((shape as Record<string, unknown>).it as Shape[]);
+      }
+    }
+  }
+
+  renameInLayers(result.layers);
+
+  if (result.assets) {
+    for (const asset of result.assets) {
+      if (asset.layers) renameInLayers(asset.layers);
+    }
+  }
+
+  return result;
+}
+
 function removeUnusedAssets(animation: LottieAnimation): LottieAnimation {
   const result = deepClone(animation);
 
@@ -494,6 +534,10 @@ export function optimizeLottie(
 
   if (options.collapseDuplicateKeyframes) {
     optimized = collapseDuplicateKeyframes(optimized) as LottieAnimation;
+  }
+
+  if (options.renameLayers) {
+    optimized = renameLayers(optimized);
   }
 
   const optimizedJson = JSON.stringify(optimized);

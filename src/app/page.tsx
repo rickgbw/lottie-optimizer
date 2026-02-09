@@ -535,7 +535,7 @@ export default function Home() {
 
           <div className="ba-inspector-section">
             <button className="ba-section-toggle" onClick={() => setAggressiveOpen(v => !v)}>
-              <span className="ba-label">Aggressive</span>
+              <span className="ba-label">Alternative Optimizations</span>
               <svg className={`ba-chevron ${aggressiveOpen ? 'ba-chevron--open' : ''}`} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 9l6 6 6-6" /></svg>
             </button>
             {aggressiveOpen && (
@@ -544,6 +544,7 @@ export default function Home() {
                 <OptRow label="Remove effects" checked={options.removeEffects} onChange={(v) => opt('removeEffects', v)} />
                 <OptRow label="Collapse transforms" checked={options.collapseTransforms} onChange={(v) => opt('collapseTransforms', v)} />
                 <OptRow label="Collapse static keyframes" checked={options.collapseDuplicateKeyframes} onChange={(v) => opt('collapseDuplicateKeyframes', v)} />
+                <OptRow label="Rename layers" checked={options.renameLayers} onChange={(v) => opt('renameLayers', v)} />
               </div>
             )}
           </div>
