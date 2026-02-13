@@ -223,7 +223,7 @@ export default function Home() {
     const blob = new Blob([data.json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = item.fileName.replace('.json', '-optimized.json');
+    a.href = url; a.download = item.fileName;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }, [downloadData]);
@@ -233,13 +233,13 @@ export default function Home() {
     for (const item of items) {
       const data = downloadData.get(item.id);
       if (!data) continue;
-      const name = item.fileName.replace('.json', '-optimized.json');
+      const name = item.fileName;
       zip.file(name, data.json);
     }
     const blob = await zip.generateAsync({ type: 'blob' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = 'lottie-optimized.zip';
+    a.href = url; a.download = 'lottie.zip';
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }, [items, downloadData]);
